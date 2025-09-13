@@ -1,0 +1,9 @@
+.env
+.DS_Store
+*.log
+*.pkl
+venv/
+__pycache__
+
+jira/data
+jira/logs
