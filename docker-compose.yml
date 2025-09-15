@@ -1,0 +1,50 @@
+version: "3.8"
+services:
+  milvus:
+    image: milvusdb/milvus:v2.3.0
+    container_name: milvus
+    ports:
+      - "19530:19530"
+      - "19121:19121"
+    volumes:
+      - ./data/milvus/db:/var/lib/milvus
+    environment:
+      TZ: UTC
+
+  llama-server:
+    build: ./llm_server
+    container_name: llm-server
+    # mount the model file(s) into /models
+    volumes:
+      - ./models:/models
+    ports:
+      - "5001:5001"
+    environment:
+      TZ: UTC
+      MODEL_PATH: /models/small-model.ggml
+
+  api:
+    build: ./api
+    container_name: llm-api
+    ports:
+      - "8000:8000"
+    depends_on:
+      - milvus
+      - llama-server
+    environment:
+      TZ: UTC
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+      LLM_SERVER_URL: http://llama-server:5001/generate
+
+  ingest:
+    build: ./ingest
+    container_name: ingest
+    depends_on:
+      - milvus
+    environment:
+      TZ: UTC
+      MILVUS_HOST: milvus
+      MILVUS_PORT: 19530
+    volumes:
+      - ./data/jira/data:/app/data/jira
