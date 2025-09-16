@@ -316,10 +316,10 @@ class JIRAXMLDataExtractor:
                     related_tickets.append(
                         {
                             "id": issue_key,
-                            "title": "",  # XML doesn't include titles, would need separate call
-                            "type": "",
-                            "priority": "",
-                            "status": "",
+                            # "title": "",  # XML doesn't include titles, would need separate call
+                            # "type": "",
+                            # "priority": "",
+                            # "status": "",
                             "relationship": relationship,
                             "section_name": section_name,
                         }
@@ -339,10 +339,10 @@ class JIRAXMLDataExtractor:
                     related_tickets.append(
                         {
                             "id": issue_key,
-                            "title": "",  # XML doesn't include titles, would need separate call
-                            "type": "",
-                            "priority": "",
-                            "status": "",
+                            # "title": "",  # XML doesn't include titles, would need separate call
+                            # "type": "",
+                            # "priority": "",
+                            # "status": "",
                             "relationship": relationship,
                             "section_name": section_name,
                         }

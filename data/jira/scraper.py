@@ -7,6 +7,7 @@ import os
 import time
 from typing import Dict, List, Optional, Any
 import logging
+import yaml
 
 import requests
 from bs4 import BeautifulSoup
@@ -131,97 +132,90 @@ class JIRARequestsScraper:
             self.logger.warning(f"Failed to get ticket data for {ticket_id}: {str(e)}")
             return None
 
-    def format_for_rag(self, ticket_data: Dict[str, Any]) -> str:
-        """Format ticket data for RAG training"""
+    def format_for_rag(self, ticket_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Format ticket data for RAG training as structured data"""
         if not ticket_data:
-            return ""
+            return {}
 
-        # Create RAG-optimized text format
-        rag_text = f"""JIRA TICKET: {ticket_data['id']}
+        # Create structured RAG data
+        rag_data = {}
+        for key in [
+            "id",
+            "title",
+            "type",
+            "status",
+            "priority",
+            "assignee",
+            "reporter",
+            "created",
+            "updated",
+            "resolution",
+        ]:
+            value = ticket_data.get(key)
+            if value is not None:
+                rag_data[key] = value
 
-TITLE: {ticket_data['title']}
+        # Always include lists, defaulting to empty if missing
+        for list_key in ["labels", "components", "fix_versions"]:
+            value = ticket_data.get(list_key)
+            if value:
+                rag_data[list_key] = value
 
-TYPE: {ticket_data['type']}
-STATUS: {ticket_data['status']}
-PRIORITY: {ticket_data['priority']}
-ASSIGNEE: {ticket_data['assignee']}
-REPORTER: {ticket_data['reporter']}
-CREATED: {ticket_data['created']}
-UPDATED: {ticket_data['updated']}
-RESOLUTION: {ticket_data['resolution']}
-
-LABELS: {', '.join(ticket_data['labels']) if ticket_data['labels'] else 'None'}
-COMPONENTS: {', '.join(ticket_data['components']) if ticket_data['components'] else 'None'}
-FIX VERSIONS: {', '.join(ticket_data['fix_versions']) if ticket_data['fix_versions'] else 'None'}
-"""
-
-        # Add related tickets grouped by section name (moved above description)
-        if ticket_data["related_tickets"]:
-            # Group related tickets by section name
+        # Add related tickets grouped by section name
+        if ticket_data.get("related_tickets"):
             sections = {}
             for related in ticket_data["related_tickets"]:
                 section_name = related.get("section_name", "Related Issues")
                 if section_name not in sections:
-                    sections[section_name] = []
-                sections[section_name].append(related)
+                    sections[section_name.lower()] = []
+                sections[section_name.lower()].append(related)
 
-            # Add each section
-            for section_name, related_tickets in sections.items():
-                rag_text += f"\n{section_name.upper()}:\n"
-                for related in related_tickets:
-                    # Just show the ticket ID
-                    rag_text += f"- {related['id']}\n"
+            rag_data["related_tickets"] = sections
 
-        # Add subtasks (moved above description)
-        if ticket_data["subtasks"]:
-            rag_text += "\nSUBTASKS:\n"
-            for subtask in ticket_data["subtasks"]:
-                rag_text += f"- {subtask['id']}\n"
+        # Add subtasks
+        if ticket_data.get("subtasks"):
+            rag_data["subtasks"] = ticket_data["subtasks"]
 
-        # Add parent task (moved above description)
+        # Add parent task
         if ticket_data.get("parent"):
-            rag_text += f"\nPARENT TASK:\n- {ticket_data['parent']}\n"
+            rag_data["parent_task"] = ticket_data["parent"]
 
-        # Add description only if it exists
+        # Add description
         if ticket_data.get("description"):
-            rag_text += f"""
-DESCRIPTION:
-{ticket_data['description']}
-"""
+            rag_data["description"] = ticket_data["description"]
 
-        # Add comments only if they exist
+        # Add comments
         if ticket_data.get("comments"):
-            rag_text += "\nCOMMENTS:\n"
-            for i, comment in enumerate(ticket_data["comments"], 1):
-                rag_text += f"""
-Comment {i} by {comment['author']} on {comment['created']}:
-{comment['body']}
-"""
+            rag_data["comments"] = ticket_data["comments"]
 
         # Add attachments
         if ticket_data.get("attachments"):
-            rag_text += "\nATTACHMENTS:\n"
-            for attachment in ticket_data["attachments"]:
-                rag_text += f"- {attachment['filename']} ({attachment['size']})\n"
+            rag_data["attachments"] = ticket_data["attachments"]
 
-        return rag_text
+        return rag_data
 
     def save_ticket(self, ticket_data: Dict[str, Any], output_dir: str) -> bool:
-        """Save ticket data to file"""
+        """Save ticket data to YAML file"""
         if not ticket_data:
             return False
 
         try:
-            # Format data for RAG
-            rag_text = self.format_for_rag(ticket_data)
+            # Format data for RAG as structured data
+            rag_data = self.format_for_rag(ticket_data)
 
-            # Create filename
-            filename = f"{ticket_data['id']}.txt"
+            # Create filename with .yml extension
+            filename = f"{ticket_data['id']}.yml"
             filepath = os.path.join(output_dir, filename)
 
-            # Save to file
+            # Save to YAML file
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write(rag_text)
+                yaml.dump(
+                    rag_data,
+                    f,
+                    default_flow_style=False,
+                    allow_unicode=True,
+                    sort_keys=False,
+                )
 
             self.logger.info(f"Saved ticket {ticket_data['id']} to {filepath}")
             return True
