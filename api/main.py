@@ -74,9 +74,6 @@ def get_enhanced_context(docs: List[Document]) -> List[Dict[str, Any]]:
             ),
             "source_file": doc.metadata.get("source", "Unknown"),
             "ticket_id": doc.metadata.get("ticket_id", "Unknown"),
-            "ticket_type": doc.metadata.get("ticket_type", "Unknown"),
-            "priority": doc.metadata.get("priority", "Unknown"),
-            "status": doc.metadata.get("status", "Unknown"),
         }
         sources.append(source_info)
     return sources
@@ -88,15 +85,9 @@ def get_ticket_summary(sources: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {}
 
     ticket_ids = list(set([s["ticket_id"] for s in sources]))
-    ticket_types = list(set([s["ticket_type"] for s in sources]))
-    priorities = list(set([s["priority"] for s in sources]))
-    statuses = list(set([s["status"] for s in sources]))
 
     return {
         "relevant_tickets": ticket_ids,
-        "ticket_types": ticket_types,
-        "priorities": priorities,
-        "statuses": statuses,
         "total_tickets": len(ticket_ids),
     }
 
@@ -137,9 +128,6 @@ async def search_tickets(query: str, limit: int = 5):
             result = {
                 "content": doc.page_content,
                 "ticket_id": doc.metadata.get("ticket_id", "Unknown"),
-                "ticket_type": doc.metadata.get("ticket_type", "Unknown"),
-                "priority": doc.metadata.get("priority", "Unknown"),
-                "status": doc.metadata.get("status", "Unknown"),
                 "source_file": doc.metadata.get("source", "Unknown"),
             }
             results.append(result)
@@ -163,9 +151,6 @@ async def list_tickets():
             if ticket_id not in tickets:
                 tickets[ticket_id] = {
                     "ticket_id": ticket_id,
-                    "ticket_type": doc.metadata.get("ticket_type", "Unknown"),
-                    "priority": doc.metadata.get("priority", "Unknown"),
-                    "status": doc.metadata.get("status", "Unknown"),
                     "source_file": doc.metadata.get("source", "Unknown"),
                 }
 
